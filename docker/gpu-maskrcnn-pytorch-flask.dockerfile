@@ -12,11 +12,11 @@ RUN clone.sh
 # ENTRYPOINT ["tini", "-g", "--"]
 # CMD ["sh","-c","clone.sh && start-notebook.sh"]
 
-RUN chmod -R 777 /home/$NB_USER/work
-
 RUN pip install flask
 RUN mkdir /home/$NB_USER/work/pytorch-mask-rcnn-flask/uploads
+RUN chmod -R 777 /home/$NB_USER/work
 
+CMD cd /home/$NB_USER/work/pytorch-mask-rcnn-flask && \
+  python application.py
 # Switch back to jovyan to avoid accidental container runs as root
 #USER $NB_UID
-
