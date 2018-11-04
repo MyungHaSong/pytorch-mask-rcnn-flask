@@ -14,6 +14,7 @@ import visualize
 
 import torch
 from flask import Flask, request, send_file
+import flask_helpers as fh
 
 # Root directory of the project
 ROOT_DIR = os.getcwd()
@@ -37,6 +38,9 @@ class InferenceConfig(coco.CocoConfig):
     IMAGES_PER_GPU = 1
 
 config = InferenceConfig()
+
+if not torch.cuda.is_available():
+    config.GPU_COUNT = 0
 config.display()
 
 # Create model object.
@@ -76,7 +80,7 @@ def hello():
     return "Hello World!"
 
 @app.route("/classify", methods=['POST'])
-def process_image():
+def get_overlays():
     print(request.files)
     file_names = []
     for key in request.files.keys():
@@ -96,13 +100,35 @@ def process_image():
     visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
                              class_names, r['scores'])
     plt.savefig('results.jpeg')
+
     return send_file("results.jpeg", mimetype='image/jpg')
 
-# # Visualize results
-# r = results[0]
-# visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-#                             class_names, r['scores'])
-# plt.show()
+@app.route("/parse", methods=['POST'])
+def parse_objects():
+    print(request.files)
+    file_names = []
+    for key in request.files.keys():
+        file = request.files[key]
+
+        f = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        # add your custom code to check that the uploaded file is a valid image and not a malicious file (out-of-scope for this post)
+        file.save(f)
+        file_names.append(f)
+    
+    # Load a random image from the images folder
+    image = skimage.io.imread(random.choice(file_names))
+
+    # Run detection
+    results = model.detect([image])
+    r = results[0]
+
+    outputs = fh.extract_bounding_boxes(image, r)
+    fh.save_images_locally(outputs)
+
+    if os.path.exists("result_0.jpg"):
+        return send_file("result_0.jpg", mimetype='image/jpg')
+    
+    return "No objects detected"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
