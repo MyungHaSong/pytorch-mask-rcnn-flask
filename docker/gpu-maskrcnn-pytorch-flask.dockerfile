@@ -14,6 +14,8 @@ RUN clone.sh
 
 RUN chmod -R 777 /home/$NB_USER/work
 
+RUN pip install flask
+RUN mkdir uploads
 
 # Switch back to jovyan to avoid accidental container runs as root
 #USER $NB_UID
