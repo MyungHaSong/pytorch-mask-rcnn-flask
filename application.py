@@ -13,8 +13,12 @@ import model as modellib
 import visualize
 
 import torch
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, Response
 import flask_helpers as fh
+from io import BytesIO
+import base64
+from PIL import Image
+from json import dumps
 
 # Root directory of the project
 ROOT_DIR = os.getcwd()
@@ -79,7 +83,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def hello():
     return "Hello World!"
 
-@app.route("/classify", methods=['POST'])
+@app.route("/visualize", methods=['POST'])
 def get_overlays():
     print(request.files)
     file_names = []
@@ -103,7 +107,7 @@ def get_overlays():
 
     return send_file("results.jpeg", mimetype='image/jpg')
 
-@app.route("/parse", methods=['POST'])
+@app.route("/extract", methods=['POST'])
 def parse_objects():
     print(request.files)
     file_names = []
@@ -129,6 +133,31 @@ def parse_objects():
         return send_file("result_0.jpg", mimetype='image/jpg')
     
     return "No objects detected"
+
+
+@app.route('/base64', methods=['POST'])
+def crop():
+    # Get the image data from json 'base64Image'
+    data = request.get_json()
+    base64_image = data.get('base64Image')
+
+    # Convert to image
+    full_im = Image.open(BytesIO(base64.b64decode(base64_image)))
+    img_format = full_im.format
+    # Converts to array with only RGB channels
+    image = np.array(full_im)[:,:,:3]
+
+    # Run detection
+    results = model.detect([image])
+    r = results[0]
+
+    # Get the outputs
+    outputs = fh.extract_bounding_boxes(image, r)
+    #fh.save_images_locally(outputs)
+    output_strings = fh.outputs_to_base64(outputs, img_format)
+
+    # Return response in json format
+    return Response(dumps({'croppedImageList': output_strings}), mimetype='application/json')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
