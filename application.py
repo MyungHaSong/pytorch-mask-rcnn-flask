@@ -20,6 +20,7 @@ import base64
 from PIL import Image
 from json import dumps
 
+
 MODEL, CLASS_NAMES = fh.get_default_model()
 
 # Flask setting
@@ -57,7 +58,7 @@ def return_visualized_image():
         file_names.append(f)
     
     # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))
+    image = skimage.io.imread(random.choice(file_names))[:,:,:3]
 
     # Run detection
     results = MODEL.detect([image])
@@ -81,7 +82,7 @@ def extract_first_object():
         file_names.append(f)
     
     # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))
+    image = skimage.io.imread(random.choice(file_names))[:,:,:3]
 
     # Run detection
     results = MODEL.detect([image])
