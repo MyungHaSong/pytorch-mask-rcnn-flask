@@ -83,6 +83,22 @@ def outputs_to_base64(output_images, img_format):
     
     return output_strings
 
+def image_to_array(image):
+    """Converts a pil image to a numpy array of RGB uint8's
+    Input:
+        image: PIL or skimage image, image to be converted
+    Output:
+        im_array: numpy array, image ready to be handed to Mask R-CNN
+    """
+    # Restricts to RGB
+    im_array = np.array(image)[:,:,:3]
+
+    if np.max(im_array) <= 1.0:
+        im_array = np.floor(im_array * 255).astype(np.uint8)
+    
+    return im_array
+
+################# Flask functions ########################
 def get_default_model():
     """Loads the coco classifier as the default model
     Input:

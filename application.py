@@ -58,7 +58,8 @@ def return_visualized_image():
         file_names.append(f)
     
     # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))[:,:,:3]
+    image = skimage.io.imread(random.choice(file_names))
+    image = fh.image_to_array(image)
 
     # Run detection
     results = MODEL.detect([image])
@@ -82,7 +83,8 @@ def extract_first_object():
         file_names.append(f)
     
     # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))[:,:,:3]
+    image = skimage.io.imread(random.choice(file_names))
+    image = fh.image_to_array(image)
 
     # Run detection
     results = MODEL.detect([image])
@@ -107,7 +109,7 @@ def mask_base64_objects():
     full_im = Image.open(BytesIO(base64.b64decode(base64_image)))
     img_format = full_im.format
     # Converts to array with only RGB channels
-    image = np.array(full_im)[:,:,:3]
+    image = fh.image_to_array(full_im)
 
     # Run detection
     results = MODEL.detect([image])
