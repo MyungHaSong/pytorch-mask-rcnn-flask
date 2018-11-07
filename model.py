@@ -565,6 +565,7 @@ def detection_target_layer(proposals, gt_class_ids, gt_boxes, gt_masks, config):
     # Handle COCO crowds
     # A crowd box in COCO is a bounding box around several instances. Exclude
     # them from training. A crowd box is given a negative class ID.
+    print(torch.nonzero(gt_class_ids < 0).size())
     if torch.nonzero(gt_class_ids < 0).size():
         crowd_ix = torch.nonzero(gt_class_ids < 0)[:, 0]
         non_crowd_ix = torch.nonzero(gt_class_ids > 0)[:, 0]
@@ -1520,6 +1521,8 @@ class MaskRCNN(nn.Module):
         # Directory for training logs
         self.log_dir = os.path.join(self.model_dir, "{}{:%Y%m%dT%H%M}".format(
             self.config.NAME.lower(), now))
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
         # Path to save after each epoch. Include placeholders that get filled by Keras.
         self.checkpoint_path = os.path.join(self.log_dir, "mask_rcnn_{}_*epoch*.pth".format(
@@ -1559,7 +1562,11 @@ class MaskRCNN(nn.Module):
         exlude: list of layer names to excluce
         """
         if os.path.exists(filepath):
-            state_dict = torch.load(filepath)
+            # Handles models trained on GPU running on CPU
+            if self.config.GPU_COUNT:
+                state_dict = torch.load(filepath)
+            else:
+                state_dict = torch.load(filepath, map_location='cpu')
             self.load_state_dict(state_dict, strict=False)
         else:
             print("Weight file not found ...")
@@ -1592,7 +1599,8 @@ class MaskRCNN(nn.Module):
             molded_images = molded_images.cuda()
 
         # Wrap in variable
-        molded_images = Variable(molded_images, volatile=True)
+        with torch.no_grad():
+            molded_images = Variable(molded_images)
 
         # Run object detection
         detections, mrcnn_mask = self.predict([molded_images, image_metas], mode='inference')
@@ -1767,9 +1775,9 @@ class MaskRCNN(nn.Module):
 
         # Data generators
         train_set = Dataset(train_dataset, self.config, augment=True)
-        train_generator = torch.utils.data.DataLoader(train_set, batch_size=1, shuffle=True, num_workers=4)
+        train_generator = torch.utils.data.DataLoader(train_set, batch_size=1, shuffle=True, num_workers=self.config.NUM_WORKERS)
         val_set = Dataset(val_dataset, self.config, augment=True)
-        val_generator = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=True, num_workers=4)
+        val_generator = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=True, num_workers=self.config.NUM_WORKERS)
 
         # Train
         log("\nStarting at epoch {}. LR={}\n".format(self.epoch+1, learning_rate))
@@ -1798,7 +1806,7 @@ class MaskRCNN(nn.Module):
             # Statistics
             self.loss_history.append([loss, loss_rpn_class, loss_rpn_bbox, loss_mrcnn_class, loss_mrcnn_bbox, loss_mrcnn_mask])
             self.val_loss_history.append([val_loss, val_loss_rpn_class, val_loss_rpn_bbox, val_loss_mrcnn_class, val_loss_mrcnn_bbox, val_loss_mrcnn_mask])
-            visualize.plot_loss(self.loss_history, self.val_loss_history, save=True, log_dir=self.log_dir)
+#             visualize.plot_loss(self.loss_history, self.val_loss_history, save=True, log_dir=self.log_dir)
 
             # Save model
             torch.save(self.state_dict(), self.checkpoint_path.format(epoch))
@@ -1911,12 +1919,13 @@ class MaskRCNN(nn.Module):
             image_metas = image_metas.numpy()
 
             # Wrap in variables
-            images = Variable(images, volatile=True)
-            rpn_match = Variable(rpn_match, volatile=True)
-            rpn_bbox = Variable(rpn_bbox, volatile=True)
-            gt_class_ids = Variable(gt_class_ids, volatile=True)
-            gt_boxes = Variable(gt_boxes, volatile=True)
-            gt_masks = Variable(gt_masks, volatile=True)
+            with torch.no_grad():
+                images = Variable(images)
+                rpn_match = Variable(rpn_match)
+                rpn_bbox = Variable(rpn_bbox)
+                gt_class_ids = Variable(gt_class_ids)
+                gt_boxes = Variable(gt_boxes)
+                gt_masks = Variable(gt_masks)
 
             # To GPU
             if self.config.GPU_COUNT:
