@@ -13,6 +13,7 @@ RUN clone.sh
 # CMD ["sh","-c","clone.sh && start-notebook.sh"]
 
 RUN pip install flask
+RUN pip install wget
 RUN mkdir /home/$NB_USER/work/pytorch-mask-rcnn-flask/uploads
 RUN chmod -R 777 /home/$NB_USER/work
 
