@@ -15,15 +15,13 @@ COPY ./clone.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/clone.sh
 RUN chmod 777 /home/$NB_USER/work
 RUN clone.sh
-# ENTRYPOINT ["tini", "-g", "--"]
-# CMD ["sh","-c","clone.sh && start-notebook.sh"]
 
 RUN pip install flask
 RUN pip install wget
-RUN mkdir /home/$NB_USER/work/pytorch-mask-rcnn-flask/uploads
 RUN chmod -R 777 /home/$NB_USER/work
 
 CMD cd /home/$NB_USER/work/pytorch-mask-rcnn-flask && \
   python application.py
+
 # Switch back to jovyan to avoid accidental container runs as root
-#USER $NB_UID
+USER $NB_UID
