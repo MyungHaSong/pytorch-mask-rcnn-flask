@@ -30,7 +30,22 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route("/")
 def hello():
-    return "Hello World!"
+    response_string = """Welcome to Mask R-CNN
+    Endpoints:
+    POST /changemodel - For selecting which model is running
+        Json Body with:
+	        "modelName": "name of model",
+	        "modelUrl": "public endpoint to download",
+	        "classNames": array of strings for the class names
+
+    POST /visualize - Returns image with masks drawn on
+        Multipart form data with the file
+    
+    POST /base64 - Accepts base64 encoded string image and returns an array of base 64 encoded strings
+        Json Body with:
+            "base64Image": "base64 encoded image data"
+    """
+    return response_string
 
 @app.route("/changemodel", methods=['POST'])
 def change_model():
@@ -62,7 +77,7 @@ def return_visualized_image():
 
     response = Response()
     response.set_data(buf.getvalue())
-    response.headers['Content-Type'] = 'image/jpg'
+    response.headers['Content-Type'] = 'image/jpeg'
     return response
 
 
@@ -89,7 +104,7 @@ def mask_base64_objects():
     output_strings = fh.outputs_to_base64(outputs, img_format)
 
     # Return response in json format
-    return Response(dumps({'croppedImageList': output_strings}), mimetype='application/json')
+    return Response(dumps({'croppedImageList': output_strings, 'model': MODEL.config.NAME}), mimetype='application/json')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
