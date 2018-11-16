@@ -47,18 +47,8 @@ def change_model():
 
 @app.route("/visualize", methods=['POST'])
 def return_visualized_image():
-    print(request.files)
-    file_names = []
-    for key in request.files.keys():
-        file = request.files[key]
-
-        f = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        # add your custom code to check that the uploaded file is a valid image and not a malicious file (out-of-scope for this post)
-        file.save(f)
-        file_names.append(f)
-    
-    # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))
+    # Get image from request and change to array
+    image = fh.image_from_request(request)
     image = fh.image_to_array(image)
 
     # Run detection
@@ -66,37 +56,14 @@ def return_visualized_image():
     r = results[0]
     visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
                              CLASS_NAMES, r['scores'])
-    plt.savefig('results.jpeg')
 
-    return send_file("results.jpeg", mimetype='image/jpg')
+    buf = BytesIO()
+    plt.savefig(buf, format='jpg')
 
-@app.route("/extract", methods=['POST'])
-def extract_first_object():
-    print(request.files)
-    file_names = []
-    for key in request.files.keys():
-        file = request.files[key]
-
-        f = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        # add your custom code to check that the uploaded file is a valid image and not a malicious file (out-of-scope for this post)
-        file.save(f)
-        file_names.append(f)
-    
-    # Load a random image from the images folder
-    image = skimage.io.imread(random.choice(file_names))
-    image = fh.image_to_array(image)
-
-    # Run detection
-    results = MODEL.detect([image])
-    r = results[0]
-
-    outputs = fh.extract_bounding_boxes(image, r)
-    fh.save_images_locally(outputs)
-
-    if os.path.exists("result_0.jpg"):
-        return send_file("result_0.jpg", mimetype='image/jpg')
-    
-    return "No objects detected"
+    response = Response()
+    response.set_data(buf.getvalue())
+    response.headers['Content-Type'] = 'image/jpg'
+    return response
 
 
 @app.route('/base64', methods=['POST'])
@@ -108,6 +75,7 @@ def mask_base64_objects():
     # Convert to image
     full_im = Image.open(BytesIO(base64.b64decode(base64_image)))
     img_format = full_im.format
+
     # Converts to array with only RGB channels
     image = fh.image_to_array(full_im)
 

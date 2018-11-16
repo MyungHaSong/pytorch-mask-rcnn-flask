@@ -18,6 +18,24 @@ import wget
 # Global vars
 ENCODING = 'utf-8'
 
+def image_from_request(request):
+    """Reads the attached image file from incoming request
+    Input:
+        request: Request object, incoming flask request
+    Output:
+        image: PIL image, the image attached to the request
+    """
+    for key in request.files.keys():
+        attached_file = request.files[key]
+        try:
+            image = Image.open(attached_file.stream)
+            return image
+        except:
+            print('Error loading image: {}'.format(attached_file.filename))
+    
+    return None
+
+
 def extract_bounding_boxes(image, results, apply_mask=True):
     """Slices regions defined by bounding box into separate images
     Inputs:
